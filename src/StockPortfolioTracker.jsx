@@ -1,8 +1,32 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, Legend, Area, AreaChart,
 } from 'recharts';
+
+// ─── LocalStorage Persistence ─────────────────────────────────────────────────
+
+const STORAGE_KEY = 'stock-dashboard-v1';
+
+function loadState(key, fallback) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed[key] !== undefined ? parsed[key] : fallback;
+  } catch { return fallback; }
+}
+
+function saveAllState(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* storage full or unavailable */ }
+}
+
+function usePersisted(key, fallback) {
+  const [value, setValue] = useState(() => loadState(key, fallback));
+  return [value, setValue, key];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1083,15 +1107,20 @@ const defaultClosed = [
 
 export default function StockPortfolioTracker() {
   const [activeTab, setActiveTab] = useState('portfolio');
-  const [positions, setPositions] = useState(defaultPositions);
-  const [closedTrades, setClosedTrades] = useState(defaultClosed);
-  const [accounts, setAccounts] = useState(defaultAccounts);
-  const [equityData, setEquityData] = useState(defaultEquityData);
+  const [positions, setPositions] = usePersisted('positions', defaultPositions);
+  const [closedTrades, setClosedTrades] = usePersisted('closedTrades', defaultClosed);
+  const [accounts, setAccounts] = usePersisted('accounts', defaultAccounts);
+  const [equityData, setEquityData] = usePersisted('equityData', defaultEquityData);
   const [showAcctSettings, setShowAcctSettings] = useState(false);
   const [editAcctName, setEditAcctName] = useState('');
   const [editAcctEquity, setEditAcctEquity] = useState('');
   const [newEquityDate, setNewEquityDate] = useState('');
   const [newEquityValue, setNewEquityValue] = useState('');
+
+  // Auto-save all persistent state to localStorage
+  useEffect(() => {
+    saveAllState({ positions, closedTrades, accounts, equityData });
+  }, [positions, closedTrades, accounts, equityData]);
   const [newEquityAcct, setNewEquityAcct] = useState('');
 
   const handleClosePosition = useCallback((closedPos) => {
@@ -1191,6 +1220,22 @@ export default function StockPortfolioTracker() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div style={{ borderTop: '1px solid #2a2a4a', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={() => {
+              if (confirm('Reset all data to defaults? This will clear all your saved positions, trades, accounts, and equity data.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                setPositions(defaultPositions);
+                setClosedTrades(defaultClosed);
+                setAccounts(defaultAccounts);
+                setEquityData(defaultEquityData);
+              }
+            }} style={{ ...actionBtnStyle, color: '#ff4444', borderColor: '#553333', fontSize: 10 }}
+              onMouseEnter={(e) => { e.target.style.borderColor = '#ff4444'; }}
+              onMouseLeave={(e) => { e.target.style.borderColor = '#553333'; }}>
+              Reset All Data to Defaults
+            </button>
           </div>
         </div>
       )}
