@@ -18,7 +18,6 @@ const fmtPct = (v) => {
   return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 };
 const colorVal = (v) => (v > 0 ? '#00ff88' : v < 0 ? '#ff4444' : '#c0c0c0');
-const rprColor = (v) => (v >= 80 ? '#00ff88' : v >= 40 ? '#ffd700' : '#ff4444');
 const todayStr = () => {
   const d = new Date();
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`;
@@ -157,11 +156,11 @@ const tdStyle = (i, total) => ({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const defaultPositions = [
-  { id: 1, symbol: 'OPEN', changePct: -3.47, last: 5.00, rpr: 99, tpr: 'D', entryDate: '9/10/25', shares: 2000, avgCost: 9.22, stopLoss: 8.93, off52WH: -45.2, account: 'Account 1' },
-  { id: 2, symbol: 'MP', changePct: -0.43, last: 58.23, rpr: 94, tpr: 'D', entryDate: '9/16/25', shares: 690, avgCost: 66.83, stopLoss: 63.42, off52WH: -12.8, account: 'Account 1' },
-  { id: 3, symbol: 'TSLA', changePct: -2.17, last: 396.73, rpr: 81, tpr: 'D', entryDate: '9/17/25', shares: 60, avgCost: 415.57, stopLoss: 399.33, off52WH: -8.5, account: 'Account 1' },
-  { id: 4, symbol: 'HOOD', changePct: -4.31, last: 77.09, rpr: 29, tpr: 'D', entryDate: '9/18/25', shares: 400, avgCost: 121.22, stopLoss: 119.00, off52WH: -36.4, account: 'Account 2' },
-  { id: 5, symbol: 'CRWV', changePct: -2.45, last: 72.99, rpr: 34, tpr: 'D', entryDate: '9/18/25', shares: 500, avgCost: 121.18, stopLoss: 115.00, off52WH: -39.8, account: 'Account 2' },
+  { id: 1, symbol: 'OPEN', changePct: -3.47, last: 5.00, entryDate: '9/10/25', shares: 2000, avgCost: 9.22, stopLoss: 8.93, account: 'Account 1' },
+  { id: 2, symbol: 'MP', changePct: -0.43, last: 58.23, entryDate: '9/16/25', shares: 690, avgCost: 66.83, stopLoss: 63.42, account: 'Account 1' },
+  { id: 3, symbol: 'TSLA', changePct: -2.17, last: 396.73, entryDate: '9/17/25', shares: 60, avgCost: 415.57, stopLoss: 399.33, account: 'Account 1' },
+  { id: 4, symbol: 'HOOD', changePct: -4.31, last: 77.09, entryDate: '9/18/25', shares: 400, avgCost: 121.22, stopLoss: 119.00, account: 'Account 2' },
+  { id: 5, symbol: 'CRWV', changePct: -2.45, last: 72.99, entryDate: '9/18/25', shares: 500, avgCost: 121.18, stopLoss: 115.00, account: 'Account 2' },
 ];
 
 const portfolioCols = [
@@ -169,8 +168,6 @@ const portfolioCols = [
   { key: 'account', label: 'Acct', width: 72 },
   { key: 'changePct', label: 'Change%', width: 78 },
   { key: 'last', label: 'Last', width: 78 },
-  { key: 'rpr', label: 'RPR', width: 56 },
-  { key: 'tpr', label: 'TPR', width: 48 },
   { key: 'entryDate', label: 'Entry Date', width: 84 },
   { key: 'shares', label: 'Shares', width: 68 },
   { key: 'plPct', label: 'P&L%', width: 74, computed: true },
@@ -180,7 +177,6 @@ const portfolioCols = [
   { key: 'risk', label: 'Risk', width: 88, computed: true },
   { key: 'plDollar', label: 'P&L $', width: 100, computed: true },
   { key: 'rs', label: "R's", width: 60, computed: true },
-  { key: 'off52WH', label: '% Off 52W High', width: 108 },
   { key: 'positionValue', label: 'Position Value', width: 110, computed: true },
   { key: 'changeDollar', label: 'Change $', width: 100, computed: true },
   { key: 'riskSell', label: '1% Risk Sell', width: 95, computed: true },
@@ -198,7 +194,7 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
     setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   }, [setPositions]);
   const addRow = useCallback(() => {
-    setPositions((prev) => [...prev, { id: nextId, symbol: 'NEW', changePct: 0, last: 0, rpr: 50, tpr: 'D', entryDate: todayStr(), shares: 0, avgCost: 0, stopLoss: 0, off52WH: 0, account: accounts[0]?.name || 'Account 1' }]);
+    setPositions((prev) => [...prev, { id: nextId, symbol: 'NEW', changePct: 0, last: 0, entryDate: todayStr(), shares: 0, avgCost: 0, stopLoss: 0, account: accounts[0]?.name || 'Account 1' }]);
     setNextId((n) => n + 1);
   }, [nextId, setPositions, accounts]);
   const deleteRow = useCallback((id) => { setPositions((prev) => prev.filter((p) => p.id !== id)); }, [setPositions]);
@@ -261,12 +257,9 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
       );
       case 'changePct': return ec(fmtPct(v), colorVal(v), 'number');
       case 'last': return ec(fmtDollar(v), '#e0e0e0', 'number');
-      case 'rpr': return ec(v, rprColor(v), 'number');
-      case 'tpr': return ec(v, '#c0c0c0', 'text');
       case 'entryDate': return ec(v, '#8888aa', 'text', 'center');
       case 'shares': return ec(v?.toLocaleString(), '#e0e0e0', 'number');
       case 'avgCost': case 'stopLoss': return ec(fmtDollar(v), '#e0e0e0', 'number');
-      case 'off52WH': return ec(fmtPct(v), colorVal(v), 'number');
       case 'plPct': case 'stopLossPct': return <StaticCell display={fmtPct(v)} color={colorVal(v)} />;
       case 'risk': return <StaticCell display={fmtDollar(v)} color="#ffd700" />;
       case 'plDollar': case 'changeDollar': return <StaticCell display={fmtDollar(v)} color={colorVal(v)} />;
@@ -331,7 +324,7 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
           <thead>
             <tr>
               {portfolioCols.map((col, i) => (
-                <th key={col.key} style={thStyle(col.key === 'symbol' || col.key === 'account' ? 'left' : col.key === 'entryDate' ? 'center' : 'right', i, portfolioCols.length)}>
+                <th key={col.key} style={thStyle(['symbol', 'account'].includes(col.key) ? 'left' : col.key === 'entryDate' ? 'center' : 'right', i, portfolioCols.length)}>
                   {col.label}
                 </th>
               ))}
