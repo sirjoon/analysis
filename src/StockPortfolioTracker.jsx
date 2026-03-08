@@ -60,6 +60,24 @@ function EditableCell({ value, display, color, onSave, type, align }) {
   );
 }
 
+function DropdownCell({ value, options, color, onSave, align }) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <select autoFocus value={value} onChange={(e) => { onSave(e.target.value); setEditing(false); }} onBlur={() => setEditing(false)}
+        style={{ background: '#0d0d1a', color: '#e0e0e0', border: '1px solid #00ff88', borderRadius: 2, padding: '2px 2px', width: '100%', fontFamily: 'inherit', fontSize: 11, textAlign: align || 'left', outline: 'none', boxSizing: 'border-box' }}>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+  return (
+    <div onClick={() => setEditing(true)} title="Click to select"
+      style={{ cursor: 'pointer', color: color || '#c0c0c0', padding: '0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align || 'left', fontSize: 11 }}>
+      {value}
+    </div>
+  );
+}
+
 function StaticCell({ display, color, align }) {
   return (
     <div style={{ color: color || '#c0c0c0', padding: '0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: align || 'right' }}>
@@ -165,6 +183,8 @@ const portfolioCols = [
   { key: 'off52WH', label: '% Off 52W High', width: 108 },
   { key: 'positionValue', label: 'Position Value', width: 110, computed: true },
   { key: 'changeDollar', label: 'Change $', width: 100, computed: true },
+  { key: 'riskSell', label: '1% Risk Sell', width: 95, computed: true },
+  { key: 'target10', label: '+10% Target', width: 90, computed: true },
 ];
 
 function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equityData }) {
@@ -191,8 +211,15 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
     const changeDollar = (p.changePct / 100) * positionValue;
     const stopLossPct = p.avgCost ? ((p.stopLoss - p.avgCost) / p.avgCost) * 100 : 0;
     const rs = risk !== 0 ? plDollar / risk : 0;
-    return { ...p, plPct, plDollar, risk, positionValue, changeDollar, stopLossPct, rs };
-  }), [positions]);
+    // 1% Risk Sell: what sell price keeps max loss at 1% of account equity
+    // maxLoss = equity * 0.01, sellPrice = avgCost - (maxLoss / shares)
+    const acct = accounts.find((a) => a.name === p.account);
+    const equity = acct ? acct.startingEquity : 0;
+    const riskSell = equity > 0 && p.shares > 0 ? p.avgCost - (equity * 0.01 / p.shares) : 0;
+    // +10% target from entry
+    const target10 = p.avgCost * 1.10;
+    return { ...p, plPct, plDollar, risk, positionValue, changeDollar, stopLossPct, rs, riskSell, target10 };
+  }), [positions, accounts]);
 
   const totals = useMemo(() => {
     let dts = 0, plTotal = 0, totalValue = 0;
@@ -229,7 +256,9 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
     );
     switch (col.key) {
       case 'symbol': return ec(v, '#ffffff', 'text', 'left');
-      case 'account': return ec(v, '#8888bb', 'text', 'left');
+      case 'account': return (
+        <DropdownCell value={v} options={accounts.map((a) => a.name)} color="#8888bb" onSave={(val) => updateField(row.id, 'account', val)} align="left" />
+      );
       case 'changePct': return ec(fmtPct(v), colorVal(v), 'number');
       case 'last': return ec(fmtDollar(v), '#e0e0e0', 'number');
       case 'rpr': return ec(v, rprColor(v), 'number');
@@ -243,6 +272,8 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
       case 'plDollar': case 'changeDollar': return <StaticCell display={fmtDollar(v)} color={colorVal(v)} />;
       case 'rs': return <StaticCell display={fmt(v)} color={colorVal(v)} />;
       case 'positionValue': return <StaticCell display={fmtDollar(v)} color="#e0e0e0" />;
+      case 'riskSell': return <StaticCell display={v > 0 ? fmtDollar(v) : '—'} color="#ff9944" />;
+      case 'target10': return <StaticCell display={v > 0 ? fmtDollar(v) : '—'} color="#00bfff" />;
       default: return <span style={{ color: '#888' }}>{String(v)}</span>;
     }
   };
@@ -292,7 +323,7 @@ function PortfolioTab({ positions, setPositions, onClosePosition, accounts, equi
         <Badge label="Portfolio" value={fmtDollar(totals.totalValue)} color="#00bfff" />
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 1600 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 1800 }}>
           <colgroup>
             {portfolioCols.map((c) => <col key={c.key} style={{ width: c.width }} />)}
             <col style={{ width: 70 }} />
